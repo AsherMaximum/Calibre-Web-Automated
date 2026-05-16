@@ -34,6 +34,7 @@ def main():
     from .remotelogin import remotelogin
     from .progress_syncing.protocols.kosync import kosync
     from .duplicates import duplicates
+    from .reading_progress import reading_progress
     try:
         from .kobo import kobo, get_kobo_activated
         from .kobo_auth import kobo_auth
@@ -71,6 +72,7 @@ def main():
     app.register_blueprint(search)
     app.register_blueprint(tasks)
     app.register_blueprint(web)
+    app.register_blueprint(reading_progress)
     app.register_blueprint(opds)
     limiter.limit("3/minute", key_func=request_username)(opds)
     app.register_blueprint(jinjia)
