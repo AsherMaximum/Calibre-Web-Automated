@@ -85,16 +85,6 @@
       </div>
 
       <div class="form-group">
-        <label for="config_reading_progress_column">{{_('Word/Page Count Column for Reading Progress WPM')}}</label>
-        <select name="config_reading_progress_column" id="config_reading_progress_column" class="form-control">
-          <option value="0" {% if conf.config_reading_progress_column == 0 %}selected{% endif %}>{{ _('None (WPM disabled)') }}</option>
-          {%  for col in pageCountColumns %}
-          <option value="{{ col.id }}" {% if col.id == conf.config_reading_progress_column %}selected{% endif %}>{{ col.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="form-group">
         <label for="config_restricted_column">{{_('View Restrictions based on Calibre column')}}</label>
         <select name="config_restricted_column" id="config_restricted_column" class="form-control">
           <option value="0" {% if conf.config_restricted_column == 0 %}selected{% endif %}>{{ _('None') }}</option>
@@ -160,8 +150,14 @@
           <input type="checkbox" name="edit_shelf_role" id="edit_shelf_role" {% if conf.role_edit_shelfs() %}checked{% endif %} style="accent-color: var(--color-secondary);">
           <label for="edit_shelf_role">{{_('Allow Editing Public Shelves')}}</label>
         </div>
+        {% if conf.config_reading_progress %}
+        <div>
+          <input type="checkbox" name="reading_progress_all_role" id="reading_progress_all_role" {% if conf.role_all_reading_progress() %}checked{% endif %} style="accent-color: var(--color-secondary);">
+          <label for="reading_progress_all_role">{{_('Allow all users reading progress')}}</label>
+        </div>
+        {% endif %}
       </div>
-      
+
       <h5 style="color: #ffc200; margin-top: 25px; margin-bottom: 15px;">{{_('Language & Display')}}</h5>
       <div class="form-group">
         <label for="config_default_locale">{{_('Default Language')}}</label>
