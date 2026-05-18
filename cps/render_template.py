@@ -11,7 +11,7 @@ from flask_babel import get_locale
 import polib
 from werkzeug.local import LocalProxy
 from .cw_login import current_user
-from sqlalchemy.sql.expression import or_
+from sqlalchemy.sql.expression import or_, func
 
 from . import config, constants, logger, ub
 from .ub import User
@@ -237,6 +237,21 @@ def translations_missing_notification() -> None:
 # Returns the template for rendering and includes the instance name
 def render_title_template(*args, **kwargs):
     sidebar, simple = get_sidebar_config(kwargs)
+    if 'reading_progress' not in kwargs and config.config_reading_progress and not current_user.is_anonymous:
+        progress_results = (
+            ub.session.query(
+                ub.KoboReadingState.book_id,
+                func.max(ub.KoboBookmark.progress_percent)
+            )
+            .join(ub.KoboBookmark, ub.KoboBookmark.kobo_reading_state_id == ub.KoboReadingState.id)
+            .filter(ub.KoboReadingState.user_id == current_user.id)
+            .filter(ub.KoboBookmark.progress_percent.isnot(None))
+            .filter(ub.KoboBookmark.progress_percent > 0)
+            .group_by(ub.KoboReadingState.book_id)
+            .having(func.max(ub.KoboBookmark.progress_percent) < 100)
+            .all()
+        )
+        kwargs['reading_progress'] = {row[0]: row[1] for row in progress_results}
     try:
         magic_shelf_routes = {
             "render": 'web.render_magic_shelf' in current_app.view_functions,
