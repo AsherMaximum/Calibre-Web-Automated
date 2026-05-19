@@ -47,6 +47,28 @@ input[type=checkbox] {accent-color: #cc7b19;}
   }
 }
 
+.cover .reading-in-progress {
+  line-height: 15px;
+  font-size: xx-small;
+  position: absolute !important;
+  top: 192px;
+  left: 4px;
+  display: inline-block;
+  padding: 2px 5px !important;
+}
+
+@media (max-width: 767px) {
+  .cover .reading-in-progress {
+    line-height: 15px;
+    font-size: xx-small;
+    position: absolute !important;
+    top: 193px;
+    left: 1px;
+    display: inline-block;
+    padding: 2px 5px !important;
+  }
+}
+
 input.datepicker {color: transparent}
 input.datepicker:focus {color: transparent}
 input.datepicker:focus + input {color: #555}
