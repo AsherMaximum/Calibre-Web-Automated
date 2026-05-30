@@ -61,7 +61,9 @@ def reading_progress_page():
         ))
     )
 
-    if not current_user.role_all_reading_progress():
+    show_all = (current_user.role_all_reading_progress()
+                and getattr(current_user, 'show_all_users_progress', False))
+    if not show_all:
         query = query.filter(ub.KoboReadingState.user_id == current_user.id)
 
     results = query.order_by(ub.KoboBookmark.last_modified.desc()).all()

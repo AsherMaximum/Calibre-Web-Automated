@@ -2640,6 +2640,9 @@ def _handle_edit_user(to_save, content, languages, translations, kobo_support):
     # Auto-send and metadata fetch settings
     content.auto_send_enabled = to_save.get("auto_send_enabled") == "on"
     content.auto_metadata_fetch = to_save.get("auto_metadata_fetch") == "on"
+    content.show_cover_progress = to_save.get("show_cover_progress") == "on"
+    if content.role_all_reading_progress():
+        content.show_all_users_progress = to_save.get("show_all_users_progress") == "on"
 
     # OPDS root order
     opds_order_raw = to_save.get("opds_root_order", "").strip()

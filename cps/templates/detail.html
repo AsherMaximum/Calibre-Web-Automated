@@ -490,15 +490,25 @@
                 {% if reading_progress_entries %}
                 <div class="detail-reading-progress" style="margin-top: 1rem; width: 100%; flex-direction: column; align-items: flex-start; gap: 4px;">
                   {% for rp in reading_progress_entries %}
-                  <span class="meta-value">
+                  <a href="#" class="meta-value reading-stats-trigger" style="text-decoration: none; cursor: pointer;"
+                     data-user="{{ rp.user }}"
+                     data-progress="{{ rp.progress | formatfloat(1) }}"
+                     data-spent-minutes="{{ rp.spent_minutes }}"
+                     data-finished-date="{{ rp.finished_date | formatdate if rp.finished_date else '' }}"
+                     data-last-read="{{ rp.last_read_date | formatdate if rp.last_read_date else '' }}"
+                     data-first-read="{{ rp.first_read_date | formatdate if rp.first_read_date else '' }}"
+                     data-times-read="{{ rp.times_read if rp.times_read is not none else '' }}"
+                     data-wpm="{{ rp.wpm if rp.wpm else '' }}">
                     {%- if show_all_reading_progress and reading_progress_entries | length > 1 %}{{ rp.user }} &mdash; {% endif -%}
                     {{- rp.progress | formatfloat(1) }}%
-                    {%- if rp.spent_minutes > 0 -%}
+                    {%- if rp.finished_date -%}
+                      &nbsp;({{ rp.finished_date | formatdate }})
+                    {%- elif rp.spent_minutes > 0 -%}
                       {%- set h = (rp.spent_minutes // 60) | int -%}
                       {%- set m = (rp.spent_minutes % 60) | int -%}
                       &nbsp;({% if h > 0 %}{{ h }}h {{ m }}m{% else %}{{ m }}m{% endif %})
                     {%- endif -%}
-                  </span>
+                  </a>
                   {% endfor %}
                 </div>
                 {% endif %}
@@ -809,7 +819,7 @@
                                     <span class="meta-value">{{ entry.pubdate|formatdate }}</span>
                                 </div>
                             {% endif %}
-                            {% if kosync_progress is not none %}
+                            {% if kosync_progress is not none and not show_cover_progress %}
                                 <div class="meta-chip">
                                     <span class="meta-label">{{ _('KOReader Progress') }}:</span>
                                     <span class="meta-value">{{ kosync_progress|formatfloat(1) }}%</span>
@@ -889,6 +899,23 @@
             </div>
         </div>
         <div id="action-toast" class="action-toast" role="status" aria-live="polite"></div>
+        {% if reading_progress_entries %}
+        <div class="modal fade" id="readingStatsModal" tabindex="-1" role="dialog" aria-labelledby="readingStatsModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content" style="border-radius: 1rem; padding: 1px;">
+              <div class="modal-card">
+                <div class="modal-header">
+                  <button type="button" class="close" data-dismiss="modal" aria-label="{{ _('Close') }}"><span aria-hidden="true">&times;</span></button>
+                  <h4 class="modal-title" id="readingStatsModalLabel">{{ _('Reading Statistics') }}</h4>
+                </div>
+                <div class="modal-body" id="readingStatsBody" style="padding: 1.5rem;">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
         {% if current_user.kindle_mail and entry.email_share_list and current_user.allow_additional_ereader_emails %}
             <div class="modal fade" id="emailSelectModal" data-book-id="{{ entry.id }}" tabindex="-1" role="dialog" aria-labelledby="emailSelectModalLabel" style="animation: auto ease-in-out 0s 1 normal none running none;">
                 <div class="modal-dialog" role="document">
@@ -984,6 +1011,53 @@
     </li>
 </script>
 <script src="{{ url_for('static', filename='js/details.js') }}"></script>
+{% if reading_progress_entries %}
+<script>
+    (function() {
+        function fmtTime(minutes) {
+            if (!minutes || minutes <= 0) return null;
+            var h = Math.floor(minutes / 60), m = minutes % 60;
+            return h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+        }
+        function row(label, value) {
+            if (value === '' || value === null || value === undefined) return '';
+            return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #3a4a54;">' +
+            '<span style="color:#8fa3b1;">' + label + '</span>' +
+            '<span style="color:#e0e8ed;font-weight:500;">' + value + '</span>' +
+            '</div>';
+        }
+        $(document).on('click', '.reading-stats-trigger', function(e) {
+            e.preventDefault();
+            var el = $(this);
+            var user = el.data('user');
+            var progress = el.data('progress');
+            var minutes = parseInt(el.data('spent-minutes')) || 0;
+            var finishedDate = el.data('finished-date');
+            var lastRead = el.data('last-read');
+            var firstRead = el.data('first-read');
+            var timesRead = el.data('times-read');
+            var wpm = el.data('wpm');
+
+            var html = '';
+            if (user) html += row('{{ _("User") }}', user);
+            html += row('{{ _("Progress") }}', progress + '%');
+            var timeStr = fmtTime(minutes);
+            if (timeStr) html += row('{{ _("Time Spent Reading") }}', timeStr);
+            if (firstRead) html += row('{{ _("First Read") }}', firstRead);
+            if (finishedDate) {
+                html += row('{{ _("Finished") }}', finishedDate);
+            } else if (lastRead) {
+                html += row('{{ _("Last Read") }}', lastRead);
+            }
+            if (wpm) html += row('{{ _("Reading Speed") }}', wpm + ' {{ _("wpm") }}');
+            if (timesRead !== '' && timesRead !== undefined) html += row('{{ _("Times Read") }}', timesRead);
+
+            $('#readingStatsBody').html(html || '<em>{{ _("No data available") }}</em>');
+            $('#readingStatsModal').modal('show');
+        });
+    })();
+</script>
+{% endif %}
 <script src="{{ url_for('static', filename='js/email_selection.js') }}"></script>
 <script src="{{ url_for('static', filename='js/fullscreen.js') }}"></script>
 {% if current_user.role_edit() %}

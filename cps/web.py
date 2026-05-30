@@ -2457,7 +2457,10 @@ def change_profile(kobo_support, hardcover_support, local_oauth_check, oauth_sta
         current_user.auto_send_enabled = to_save.get("auto_send_enabled") == "on"
         current_user.auto_metadata_fetch = to_save.get("auto_metadata_fetch") == "on"
         current_user.allow_additional_ereader_emails = to_save.get("allow_additional_ereader_emails") == "on"
-        
+        current_user.show_cover_progress = to_save.get("show_cover_progress") == "on"
+        if current_user.role_all_reading_progress():
+            current_user.show_all_users_progress = to_save.get("show_all_users_progress") == "on"
+
         # Handle hidden magic shelf templates and custom shelves
         from . import magic_shelf
         if not current_user.is_anonymous:
@@ -2978,8 +2981,19 @@ def show_book(book_id):
 
         reading_progress_entries = []
         show_all_reading_progress = False
-        if (config.config_reading_progress
-                and current_user.check_visibility(constants.SIDEBAR_READING_PROGRESS)):
+        show_cover_progress = (config.config_reading_progress
+                                and getattr(current_user, 'show_cover_progress', False))
+        if show_cover_progress and current_user.is_authenticated:
+            # Fetch word count for WPM calculation if configured
+            rp_word_count = None
+            if config.config_reading_progress_column:
+                try:
+                    cc_class = db.cc_classes[config.config_reading_progress_column]
+                    cc_val = calibre_db.session.query(cc_class).filter(cc_class.book == book_id).first()
+                    rp_word_count = cc_val.value if cc_val else None
+                except (KeyError, AttributeError, IndexError):
+                    pass
+
             rp_query = (
                 ub.session.query(ub.KoboReadingState, ub.KoboBookmark, ub.KoboStatistics, ub.User)
                 .join(ub.KoboBookmark, ub.KoboBookmark.kobo_reading_state_id == ub.KoboReadingState.id)
@@ -2989,15 +3003,26 @@ def show_book(book_id):
                 .filter(ub.KoboBookmark.progress_percent.isnot(None))
                 .filter(ub.KoboBookmark.progress_percent != 0)
             )
-            if current_user.role_all_reading_progress():
+            if current_user.role_all_reading_progress() and getattr(current_user, 'show_all_users_progress', False):
                 show_all_reading_progress = True
             else:
                 rp_query = rp_query.filter(ub.KoboReadingState.user_id == current_user.id)
-            for _, bookmark, statistics, user in rp_query.all():
+            for kobo_state, bookmark, statistics, user in rp_query.all():
+                finished = bookmark.progress_percent >= 100
+                minutes = statistics.spent_reading_minutes or 0
+                book_read = kobo_state.book_read_link
+                wpm = None
+                if rp_word_count and minutes > 0:
+                    wpm = round((rp_word_count * bookmark.progress_percent / 100.0) / minutes, 1)
                 reading_progress_entries.append({
                     'user': user.name,
                     'progress': bookmark.progress_percent,
-                    'spent_minutes': statistics.spent_reading_minutes or 0,
+                    'spent_minutes': minutes,
+                    'finished_date': bookmark.last_modified if finished else None,
+                    'last_read_date': bookmark.last_modified,
+                    'first_read_date': book_read.first_time_started_reading if book_read else None,
+                    'times_read': book_read.times_started_reading if book_read else None,
+                    'wpm': wpm,
                 })
 
         return render_title_template('detail.html',
@@ -3009,6 +3034,7 @@ def show_book(book_id):
                                      cwa_settings=cwa_settings,
                                      kosync_progress=kosync_progress,
                                      kosync_progress_timestamp=kosync_progress_timestamp,
+                                     show_cover_progress=show_cover_progress,
                                      reading_progress_entries=reading_progress_entries,
                                      show_all_reading_progress=show_all_reading_progress,
                                      page="book")

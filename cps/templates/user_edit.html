@@ -360,18 +360,42 @@
           </div>
           {% endif %}
         {% endfor %}
-        <div>
-          <input type="checkbox" name="Show_detail_random" id="Show_detail_random" {% if content.show_detail_random() %}checked{% endif %} style="accent-color: var(--color-secondary);">
-          <label for="Show_detail_random">{{_('Show Random Books in Detail View')}}</label>
-        </div>
       </div>
-      
+
       {% if ( current_user and current_user.role_admin() and not new_user ) and not simple %}
       <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #5c6b74;">
         <a href="#" id="get_user_tags" class="btn btn-default" data-id="{{content.id}}" data-toggle="modal" data-target="#restrictModal">{{_('Add Allowed/Denied Tags')}}</a>
         <a href="#" id="get_user_column_values" data-id="{{content.id}}" class="btn btn-default" data-toggle="modal" data-target="#restrictModal" style="margin-left: 10px;">{{_('Add allowed/Denied Custom Column Values')}}</a>
       </div>
       {% endif %}
+    </div>
+
+    <!-- Other Display Settings Card -->
+    <div class="settings-container" style="max-width: none; margin-inline: 0rem;">
+      <h4 class="settings-section-header">{{_('Other Display Settings')}}</h4>
+      <div style="display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                  gap: 12px;
+                  margin-top: 20px;
+                  background: #202c34a3;
+                  padding: 2rem;">
+        <div>
+          <input type="checkbox" name="Show_detail_random" id="Show_detail_random" {% if content.show_detail_random() %}checked{% endif %} style="accent-color: var(--color-secondary);">
+          <label for="Show_detail_random">{{_('Show Random Books in Detail View')}}</label>
+        </div>
+        {% if config.config_reading_progress %}
+        <div>
+          <input type="checkbox" name="show_cover_progress" id="show_cover_progress" {% if content.show_cover_progress %}checked{% endif %} style="accent-color: var(--color-secondary);">
+          <label for="show_cover_progress">{{_('Show progress under book cover')}}</label>
+        </div>
+        {% if content.role_all_reading_progress() %}
+        <div>
+          <input type="checkbox" name="show_all_users_progress" id="show_all_users_progress" {% if content.show_all_users_progress %}checked{% endif %} style="accent-color: var(--color-secondary);">
+          <label for="show_all_users_progress">{{_('Show all users reading progress')}}</label>
+        </div>
+        {% endif %}
+        {% endif %}
+      </div>
     </div>
     
     <!-- User Permissions Card (Admin Only) -->

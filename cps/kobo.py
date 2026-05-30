@@ -965,6 +965,8 @@ def HandleStateRequest(book_uuid):
                 new_book_read_status = get_ub_read_status(request_status_info["Status"])
                 if new_book_read_status == ub.ReadBook.STATUS_IN_PROGRESS \
                         and new_book_read_status != book_read.read_status:
+                    if book_read.times_started_reading == 0:
+                        book_read.first_time_started_reading = datetime.now(timezone.utc)
                     book_read.times_started_reading += 1
                     book_read.last_time_started_reading = datetime.now(timezone.utc)
                 book_read.read_status = new_book_read_status

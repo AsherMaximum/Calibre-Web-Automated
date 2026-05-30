@@ -290,6 +290,10 @@ class User(UserBase, Base):
     auto_send_enabled = Column(Boolean, default=False)
     # Allow entering additional email addresses on send-to-eReader
     allow_additional_ereader_emails = Column(Boolean, default=True)
+    # Show reading progress % under book cover in detail view
+    show_cover_progress = Column(Boolean, default=False)
+    # Show progress for all users (requires role_all_reading_progress permission)
+    show_all_users_progress = Column(Boolean, default=False)
 
 
 if oauth_support:
@@ -338,6 +342,8 @@ class Anonymous(AnonymousUserMixin, UserBase):
         self.role = None
         self.name = None
         self.auto_send_enabled = False
+        self.show_cover_progress = False
+        self.show_all_users_progress = False
         self.loadSettings()
 
     def loadSettings(self):
@@ -547,6 +553,7 @@ class ReadBook(Base):
                                       backref=backref("book_read_link",
                                                       uselist=False))
     last_modified = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    first_time_started_reading = Column(DateTime, nullable=True)
     last_time_started_reading = Column(DateTime, nullable=True)
     times_started_reading = Column(Integer, default=0, nullable=False)
 
@@ -889,6 +896,36 @@ def migrate_user_table(engine, _session):
                 e,
             )
 
+    # Migration for per-user cover progress display preference
+    try:
+        _session.query(exists().where(User.show_cover_progress)).scalar()
+        _session.commit()
+    except exc.OperationalError:
+        _safe_session_rollback(_session, "user.show_cover_progress")
+        try:
+            _run_ddl_with_retry(engine, "ALTER TABLE user ADD column 'show_cover_progress' Boolean DEFAULT 0")
+        except Exception as e:
+            db_hint = app_DB_path or str(engine.url)
+            log.error(
+                "Failed to add show_cover_progress column to user table in app.db (%s). Error: %s",
+                db_hint, e,
+            )
+
+    # Migration for per-user all-users progress display preference
+    try:
+        _session.query(exists().where(User.show_all_users_progress)).scalar()
+        _session.commit()
+    except exc.OperationalError:
+        _safe_session_rollback(_session, "user.show_all_users_progress")
+        try:
+            _run_ddl_with_retry(engine, "ALTER TABLE user ADD column 'show_all_users_progress' Boolean DEFAULT 0")
+        except Exception as e:
+            db_hint = app_DB_path or str(engine.url)
+            log.error(
+                "Failed to add show_all_users_progress column to user table in app.db (%s). Error: %s",
+                db_hint, e,
+            )
+
     # Migration to add per-user email subject for Kindle sending
     try:
         _session.query(exists().where(User.kindle_mail_subject)).scalar()
@@ -928,6 +965,14 @@ def migrate_user_table(engine, _session):
     except Exception as e:
         print(f"[Migration] Warning: Could not update duplicates sidebar setting: {e}")
         _session.rollback()
+
+    # Migration for first_time_started_reading on book_read_link
+    try:
+        _session.query(exists().where(ReadBook.first_time_started_reading)).scalar()
+        _session.commit()
+    except exc.OperationalError:
+        _safe_session_rollback(_session, "book_read_link.first_time_started_reading")
+        _run_ddl_with_retry(engine, "ALTER TABLE book_read_link ADD column 'first_time_started_reading' DateTime")
 
 def migrate_oauth_provider_table(engine, _session):
     try:
